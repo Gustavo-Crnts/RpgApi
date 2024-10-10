@@ -21,23 +21,25 @@ namespace RpgApi.Controllers
             _context = context;
         }
 
-        [HttpGet("{id}")]
+        [HttpGet("{id}")] //Buscar pelo id
         public async Task<IActionResult> GetSingle(int id)
         {
-
-            try 
+            try
             {
-                Personagem p = await _context.TB_PERSONAGENS .FirstOrDefaultAsync(pBusca => pBusca.Id == id);
+                Personagem p = await _context.TB_PERSONAGENS
+                .Include(p => p.Arma)
+                .Include(us => us.Usuario)
+                .Include(p => p.PersonagemHabilidades)
+                    .ThenInclude(ps => ps.Habilidade)
+                .FirstOrDefaultAsync(pBusca => pBusca.Id == id);
 
                 return Ok(p);
             }
-
             catch (System.Exception ex)
             {
-                return BadRequest(ex.Message);
+                return BadRequest(ex.Message + " - " + ex.InnerException);
             }
         }
-
         [HttpGet("GetAll")]
         public async Task<IActionResult> Get()
         {
@@ -97,6 +99,28 @@ namespace RpgApi.Controllers
                 return Ok(linhasAfetadas);
             }
 
+            catch (System.Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+
+        [HttpPost("DeletePersonagemHabilidade")]
+        public async Task<IActionResult> DeleteAsync(PersonagemHabilidade ph)
+        {
+            try
+            {
+               PersonagemHabilidade? phRemover = await _context.TB_PERSONAGENS_HABILIDADES
+                    .FirstOrDefaultAsync(phBusca => phBusca.PersonagemId == ph.PersonagemId
+                     && phBusca.HabilidadeId == ph.HabilidadeId);
+                if(phRemover == null)
+                    throw new System.Exception("Personagem ou Habilidade não encontrados");
+
+                _context.TB_PERSONAGENS_HABILIDADES.Remove(phRemover);
+                int linhasAfetadas = await _context.SaveChangesAsync();
+                return Ok(linhasAfetadas);
+            }
             catch (System.Exception ex)
             {
                 return BadRequest(ex.Message);
